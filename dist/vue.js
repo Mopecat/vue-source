@@ -47,14 +47,72 @@
     return _typeof(obj) === "object" && obj !== null;
   }
 
+  var oldArrayMethods = Array.prototype;
+  var arrayMethods = Object.create(oldArrayMethods);
+  var methods = ["push", "shift", "unshift", "sort", "reverse", "splice"];
+  methods.forEach(function (method) {
+    arrayMethods[method] = function () {
+      // 获取到当前调用方法上的ob
+      var ob = this.__ob__; // 这里的this指向的是调用函数劫持后修改的数组 也就是调用arrMethods[method]的数组
+
+      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+
+      var result = oldArrayMethods[method].apply(this, args); // 调用原数组方法方法
+
+      var inserted; // 如果是给数组中新增数据，我们需要对新增的数据响应数据处理（如果是对象的话）
+
+      switch (method) {
+        case "push":
+        case "unshift":
+          // 新增的数据就是当前方法的参数
+          inserted = args;
+          break;
+
+        case "splice":
+          // splice也可以新增
+          inserted = args.slice(2); // 如果有第三个参数 证明是新增，第三个参数就是新增的那一项
+
+          break;
+      } // 将新增的数据变为可观测
+
+
+      inserted && ob.observeArray(inserted);
+      return result;
+    };
+  });
+
   var Observer = /*#__PURE__*/function () {
     function Observer(data) {
       _classCallCheck(this, Observer);
 
-      this.walk(data);
-    }
+      // 将当前实例挂载到data上 __ob__也可以作为一个响应式的标识
+      Object.defineProperty(data, "__ob__", {
+        enumerable: false,
+        // 为了避免死循环，重复的枚举当前实例，使当前属性不可枚举
+        configurable: false,
+        // 同样也不想这个属性被修改所以也不可配置
+        value: this
+      }); // 判断一下是不是数组类型，如果是数组走函数劫持的方法
+
+      if (Array.isArray(data)) {
+        data.__proto__ = arrayMethods;
+        this.observeArray(data);
+      } else {
+        this.walk(data);
+      }
+    } // [{a:111}] 需要将这种类型的数据也进行响应观测
+
 
     _createClass(Observer, [{
+      key: "observeArray",
+      value: function observeArray(data) {
+        for (var key in data) {
+          observe(data[key]);
+        }
+      }
+    }, {
       key: "walk",
       value: function walk(data) {
         Object.keys(data).forEach(function (key) {
@@ -82,8 +140,7 @@
   }
 
   function observe(data) {
-    console.log(data); // 如果不是对象就返回
-
+    // 如果不是对象就返回
     if (!isObject(data)) {
       return;
     }

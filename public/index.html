@@ -12,10 +12,17 @@
       let vm = new Vue({
         el: "#app",
         data() {
-          return { msg: "hello world", age: 1, a: { aa: 123 } };
+          return {
+            msg: "hello world",
+            age: 1,
+            a: { aa: 123 },
+            arr: [{ b: 1 }],
+          };
         },
       });
       vm._data.msg = "123123";
+      vm._data.arr.push({ c: 22 });
+      console.log(vm._data);
     </script>
   </body>
 </html>
