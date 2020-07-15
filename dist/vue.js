@@ -498,7 +498,7 @@
 
   function generate(el) {
     var children = genChildren(el);
-    var code = "\n    _c(\"".concat(el.tag, "\",").concat(el.attrs.length ? genProps(el.attrs) : "undefined").concat(children ? ",".concat(children) : "", ")");
+    var code = "_c(\"".concat(el.tag, "\",").concat(el.attrs.length ? genProps(el.attrs) : "undefined").concat(children ? ",".concat(children) : "", ")");
     return code;
   }
 
@@ -536,6 +536,30 @@
     return render;
   }
 
+  var Watcher = function Watcher(vm, exprOrFn, cb, options) {
+    _classCallCheck(this, Watcher);
+
+    exprOrFn();
+  };
+
+  function lifeCycleMixin(Vue) {
+    Vue.prototype._update = function () {
+      console.log("_update");
+    };
+  }
+  function mountComponent(vm, el) {
+    // Vue在渲染过程中会创建一个“渲染watcher”，只用来渲染
+    // watcher就相当于是一个回调，每次数据变化，就会重新执行watcher
+    var updateComponent = function updateComponent() {
+      // _render内部会调用 解析后的render方法  => 返回的是vnode（虚拟节点）
+      // _update将虚拟节点转换为dom节点
+      vm._update(vm._render());
+    }; // 每次数据变化 就执行updateComponent 方法进行更新操作
+
+
+    new Watcher(vm, updateComponent, function () {}, true);
+  }
+
   function initMixin(Vue) {
     Vue.prototype._init = function (options) {
       var vm = this;
@@ -563,7 +587,63 @@
         var render = compileToFunctions(template);
         options.render = render;
         console.log(options.render);
-      }
+      } // 组件的挂在流程
+
+
+      mountComponent(vm);
+    };
+  }
+
+  function createTextVnode(text) {
+    return vnode(undefined, undefined, undefined, undefined, text);
+  }
+  function createElement(tag) {
+    var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    for (var _len = arguments.length, children = new Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
+      children[_key - 2] = arguments[_key];
+    }
+
+    // let key = data.key;
+    // if (key) {
+    //   delete data.key;
+    // }
+    return vnode(tag, data, data.key, children);
+  }
+
+  function vnode(tag, data, key, children, text) {
+    return {
+      tag: tag,
+      data: data,
+      key: key,
+      children: children,
+      text: text
+    };
+  }
+
+  function renderMixin(Vue) {
+    Vue.prototype._render = function () {
+      console.log("_render");
+      var vm = this;
+      var render = vm.$options.render; // 创建文本的虚拟节点
+
+      Vue.prototype._v = function (text) {
+        return createTextVnode(text);
+      }; // 创建元素虚拟节点
+
+
+      Vue.prototype._c = function () {
+        return createElement.apply(void 0, arguments);
+      }; // 值
+
+
+      Vue.prototype._s = function (val) {
+        return val == null ? "" : _typeof(val) === "object" ? JSON.stringify(val) : val;
+      };
+
+      var vnode = render.call(this);
+      console.log(vnode);
+      return vnode;
     };
   }
 
@@ -572,6 +652,9 @@
   }
 
   initMixin(Vue); // 添加原型方法
+
+  renderMixin(Vue);
+  lifeCycleMixin(Vue);
 
   return Vue;
 
