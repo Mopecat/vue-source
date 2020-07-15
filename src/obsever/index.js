@@ -49,5 +49,10 @@ export function observe(data) {
   if (!isObject(data)) {
     return;
   }
+
+  // 防止对象被重复观测
+  if (data.__ob__ instanceof Observer) {
+    return;
+  }
   return new Observer(data);
 }
