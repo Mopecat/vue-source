@@ -17,6 +17,7 @@ function initProps() {}
 
 function initMethods() {}
 
+// 用于将data上的属性直接代理到实例上 这样就可以直接通过this访问
 function proxy(target, property, key) {
   Object.defineProperty(target, key, {
     get() {
@@ -36,5 +37,6 @@ function initData(vm) {
   for (let key in data) {
     proxy(vm, "_data", key);
   }
+  // 响应化data
   observe(data);
 }

@@ -29,7 +29,7 @@ class Observer {
     });
   }
 }
-
+// 递归循环data 重写data的每一个属性
 function defineReactive(data, key, value) {
   observe(value);
   Object.defineProperty(data, key, {

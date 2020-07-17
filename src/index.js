@@ -6,6 +6,6 @@ function Vue(options) {
 }
 
 initMixin(Vue); // 添加原型方法
-renderMixin(Vue);
-lifeCycleMixin(Vue);
+renderMixin(Vue); // 原型上添加_render方法 用于渲染dom
+lifeCycleMixin(Vue);  // 生命周期相关
 export default Vue;
