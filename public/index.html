@@ -11,6 +11,20 @@
     </div>
     <script src="../dist/vue.js"></script>
     <script>
+      Vue.mixin({
+        a: { a: 1 },
+        b: 2,
+        created() {
+          console.log("mixin 1");
+        },
+      });
+      Vue.mixin({
+        a: { b: 2 },
+        c: 3,
+        created() {
+          console.log("mixin 1");
+        },
+      });
       let vm = new Vue({
         el: "#app",
         data() {
@@ -23,8 +37,8 @@
         },
         // template: `<div id="app" style="color: red"><span>hello world {{msg}} shshs {{age}}</span></div>`,
       });
-      vm._data.msg = "123123";
-      vm._data.arr.push({ c: 22 });
+      // vm._data.msg = "123123";
+      // vm._data.arr.push({ c: 22 });
     </script>
   </body>
 </html>

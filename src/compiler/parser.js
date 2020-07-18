@@ -50,11 +50,12 @@ export function parserHTML(html) {
     if (element.tag !== tagName) {
       throw new Error(`${element.tag} 标签未闭合`);
     }
-    let parent = stack[stack.length - 1];
-    if (parent) {
+    // 遇到结尾标签将当前元素出栈，并修改currentParent的指向
+    currentParent = stack[stack.length - 1];
+    if (currentParent) {
       // 孩子可以有多个，但是爹只能有一个
-      element.parent = parent;
-      parent.children.push(element);
+      element.parent = currentParent;
+      currentParent.children.push(element);
     }
   }
   // 处理文本
