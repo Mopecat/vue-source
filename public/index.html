@@ -6,7 +6,9 @@
     <title>Document</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app" style="color: red;">
+      hello world {{msg}} shshs {{age}}
+    </div>
     <script src="../dist/vue.js"></script>
     <script>
       let vm = new Vue({
@@ -19,7 +21,7 @@
             arr: [{ b: 1 }],
           };
         },
-        template: `<div id="app" style="color: red"><span>hello world {{msg}} shshs {{age}}</span></div>`,
+        // template: `<div id="app" style="color: red"><span>hello world {{msg}} shshs {{age}}</span></div>`,
       });
       vm._data.msg = "123123";
       vm._data.arr.push({ c: 22 });

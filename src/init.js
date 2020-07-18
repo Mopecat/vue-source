@@ -18,19 +18,19 @@ export function initMixin(Vue) {
   Vue.prototype.$mount = function (el) {
     const vm = this;
     const options = vm.$options;
-    el = document.querySelector(el);
+    vm.$el = document.querySelector(el);
     // 如果用户没有传render方法，那么就需要将template转换成render方法
     if (!options.render) {
       let template = vm.$options.template;
       // 如果用户也没有传template，那么就将el作为模板转换成render函数
-      if (!template && el) {
-        template = el.outerHTML;
+      if (!template && vm.$el) {
+        template = vm.$el.outerHTML;
       }
       const render = compileToFunctions(template);
       options.render = render;
       console.log(options.render);
     }
     // 组件的挂在流程
-    mountComponent(vm, el);
+    mountComponent(vm, vm.$el);
   };
 }
