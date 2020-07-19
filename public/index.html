@@ -14,15 +14,21 @@
       Vue.mixin({
         a: { a: 1 },
         b: 2,
+        beforeCreate() {
+          console.log("beforeCreate 1");
+        },
         created() {
-          console.log("mixin 1");
+          console.log("created 1");
         },
       });
       Vue.mixin({
         a: { b: 2 },
         c: 3,
+        beforeCreate() {
+          console.log("beforeCreate 2");
+        },
         created() {
-          console.log("mixin 1");
+          console.log("created 2");
         },
       });
       let vm = new Vue({
@@ -34,6 +40,18 @@
             a: { aa: 123 },
             arr: [{ b: 1 }],
           };
+        },
+        beforeCreate() {
+          console.log("beforeCreate vm");
+        },
+        created() {
+          console.log("created vm");
+        },
+        beforeMount() {
+          console.log("beforeMount");
+        },
+        mounted() {
+          console.log("mounted");
         },
         // template: `<div id="app" style="color: red"><span>hello world {{msg}} shshs {{age}}</span></div>`,
       });
