@@ -1,4 +1,5 @@
 import { pushTarget, popTarget } from "./dep";
+import { queueWatcher } from "./scheduler";
 let id = 0;
 class Watcher {
   constructor(vm, exprOrFn, cb, options) {
@@ -35,8 +36,13 @@ class Watcher {
       dep.addSub(this);
     }
   }
-  // 更新方法
+  // 更新wather列队
   update() {
+    queueWatcher(this); // 将watcher存储起来
+    // this.get();
+  }
+  // 更新方法
+  run() {
     this.get();
   }
 }

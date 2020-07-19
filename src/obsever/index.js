@@ -39,7 +39,6 @@ function defineReactive(data, key, value) {
       // 判断如果当前属性是否需要依赖收集（也就是当前模板中是否有用到这个属性）
       if (Dep.target) {
         dep.depend(); // dep去收集当前属性的依赖
-        console.log(dep);
       }
       return value;
     },

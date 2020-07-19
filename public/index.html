@@ -55,6 +55,16 @@
         },
         // template: `<div id="app" style="color: red"><span>hello world {{msg}} shshs {{age}}</span></div>`,
       });
+      setTimeout(() => {
+        vm.msg = 1;
+        vm.msg = 2;
+        vm.msg = 3;
+        vm.age = 18;
+
+        vm.$nextTick(() => {
+          console.log(app.innerHTML);
+        });
+      }, 1000);
       // vm._data.msg = "123123";
       // vm._data.arr.push({ c: 22 });
     </script>

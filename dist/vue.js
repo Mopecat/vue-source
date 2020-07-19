@@ -42,6 +42,55 @@
     return Constructor;
   }
 
+  function _defineProperty(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  function ownKeys(object, enumerableOnly) {
+    var keys = Object.keys(object);
+
+    if (Object.getOwnPropertySymbols) {
+      var symbols = Object.getOwnPropertySymbols(object);
+      if (enumerableOnly) symbols = symbols.filter(function (sym) {
+        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+      });
+      keys.push.apply(keys, symbols);
+    }
+
+    return keys;
+  }
+
+  function _objectSpread2(target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i] != null ? arguments[i] : {};
+
+      if (i % 2) {
+        ownKeys(Object(source), true).forEach(function (key) {
+          _defineProperty(target, key, source[key]);
+        });
+      } else if (Object.getOwnPropertyDescriptors) {
+        Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+      } else {
+        ownKeys(Object(source)).forEach(function (key) {
+          Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+        });
+      }
+    }
+
+    return target;
+  }
+
   function _slicedToArray(arr, i) {
     return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
   }
@@ -101,6 +150,69 @@
   // 工具方法
   function isObject(obj) {
     return _typeof(obj) === "object" && obj !== null;
+  } // 应用策略模式
+
+  var strats = {}; // 生命周期常量 （写几个示例一下 没写全 反正都统一处理的）
+
+  var LIFECYCLE_HOOKS = ["beforeCreate", "created", "beforeMount", "mounted", "beforeUpdate", "updated"];
+  /**
+   * desc 生命周期函数合并方法
+   * @param {Function} parentVal 父级生命周期值
+   * @param {Function} childVal 子级生命周期值
+   * @returns {Array} 生命周期函数合并后的数组
+   */
+
+  function mergeHook(parentVal, childVal) {
+    // 如果有子级 且 有父级 则父级合并子级
+    if (childVal) {
+      if (parentVal) {
+        return parentVal.concat(childVal);
+      } // 如果没有父级则直接返回数组包裹的子级 这样保证了 最后返回的肯定是一个数组
+      else {
+          return [childVal];
+        }
+    } // 如果没有子级则直接返回父级
+    else {
+        return parentVal;
+      }
+  }
+
+  LIFECYCLE_HOOKS.forEach(function (hook) {
+    strats[hook] = mergeHook;
+  }); // 合并方法 用于全局api mixin
+
+  function mergeOptions(parent, child) {
+    var options = {}; // 循环父级options
+
+    for (var key in parent) {
+      // 用户合并父子级的key
+      mergeField(key);
+    } // 循环子级options 这时如果父级中有的key已经在上一个循环中处理过了 需要过滤一下
+
+
+    for (var _key in child) {
+      // 过滤父级中的key
+      if (!parent.hasOwnProperty(_key)) {
+        mergeField(_key);
+      }
+    }
+
+    function mergeField(key) {
+      if (strats[key]) {
+        options[key] = strats[key](parent[key], child[key]);
+      } // 如果父级和子级中都有且他们都是对象那么就合并对象  否则就赋值为子级 如果子级没有这个key，那么就还使用父级
+      else if (isObject(parent[key]) && isObject(child[key])) {
+          options[key] = _objectSpread2(_objectSpread2({}, parent[key]), child[key]);
+        } else {
+          if (child[key] == null) {
+            options[key] = parent[key];
+          } else {
+            options[key] = child[key];
+          }
+        }
+    }
+
+    return options;
   }
 
   var oldArrayMethods = Array.prototype;
@@ -138,6 +250,57 @@
       return result;
     };
   });
+
+  var id = 0;
+
+  var Dep = /*#__PURE__*/function () {
+    function Dep() {
+      _classCallCheck(this, Dep);
+
+      this.id = id++; // 用于标记Dep
+
+      this.subs = [];
+    }
+
+    _createClass(Dep, [{
+      key: "depend",
+      value: function depend() {
+        // 1.让dep记住（存）watcher
+        // 2.让watcher记住dep 双向记忆
+        Dep.target.addDep(this); // 这个时候Dep.target就是watcher
+      } // 存watcher
+
+    }, {
+      key: "addSub",
+      value: function addSub(watcher) {
+        this.subs.push(watcher);
+      } // 通知更新方法
+
+    }, {
+      key: "notify",
+      value: function notify() {
+        // 调用当前属性对应的每一个watcher的update方法
+        this.subs.forEach(function (watcher) {
+          return watcher.update();
+        });
+      }
+    }]);
+
+    return Dep;
+  }(); // 用于标记属性 在defineProperty中 如果Dep.target 不是null 证明被赋值了watcher 然后就走依赖收集的流程
+
+
+  Dep.target = null;
+
+  function pushTarget(watcher) {
+    Dep.target = watcher; // 这个主要是的computed 和 watch 对应的watcher的标记
+    // stack.push(watcher);
+  } // 删除target
+
+  function popTarget() {
+    Dep.target = null; // stack.pop();
+    // Dep.target = stack[stack.length - 1];
+  }
 
   var Observer = /*#__PURE__*/function () {
     function Observer(data) {
@@ -178,12 +341,19 @@
     }]);
 
     return Observer;
-  }();
+  }(); // 递归循环data 重写data的每一个属性
+
 
   function defineReactive(data, key, value) {
     observe(value);
+    var dep = new Dep();
     Object.defineProperty(data, key, {
       get: function get() {
+        // 判断如果当前属性是否需要依赖收集（也就是当前模板中是否有用到这个属性）
+        if (Dep.target) {
+          dep.depend(); // dep去收集当前属性的依赖
+        }
+
         return value;
       },
       set: function set(newVal) {
@@ -191,6 +361,7 @@
         observe(newVal); // 监控当前设置的值 因为设置的值也可能是个对象
 
         value = newVal;
+        dep.notify();
       }
     });
   }
@@ -221,6 +392,7 @@
     }
   }
 
+
   function proxy(target, property, key) {
     Object.defineProperty(target, key, {
       get: function get() {
@@ -240,7 +412,8 @@
 
     for (var key in data) {
       proxy(vm, "_data", key);
-    }
+    } // 响应化data
+
 
     observe(data);
   }
@@ -309,14 +482,15 @@
 
       if (element.tag !== tagName) {
         throw new Error("".concat(element.tag, " \u6807\u7B7E\u672A\u95ED\u5408"));
-      }
+      } // 遇到结尾标签将当前元素出栈，并修改currentParent的指向
 
-      var parent = stack[stack.length - 1];
 
-      if (parent) {
+      currentParent = stack[stack.length - 1];
+
+      if (currentParent) {
         // 孩子可以有多个，但是爹只能有一个
-        element.parent = parent;
-        parent.children.push(element);
+        element.parent = currentParent;
+        currentParent.children.push(element);
       }
     } // 处理文本
 
@@ -536,20 +710,194 @@
     return render;
   }
 
-  var Watcher = function Watcher(vm, exprOrFn, cb, options) {
-    _classCallCheck(this, Watcher);
+  var has = {}; // 用于判断是否是重复的watcher 避免同时重复修改某一个属性时 多次的更新视图 浪费性能
 
-    exprOrFn();
-  };
+  var queue = []; // watcher的队列
+  // 将watcher存储进队列
+
+  function queueWatcher(watcher) {
+    var id = watcher.id; // 重复的watcher不加入队列
+
+    if (has[id] == null) {
+      has[id] = true;
+      queue.push(watcher);
+      nextTick(flushSchedulerQueue);
+    }
+  }
+
+  function flushSchedulerQueue() {
+    for (var i = 0; i < queue.length; i++) {
+      queue[i].run();
+    } // 清空 保证当再次更新的时候用的是新的watcher
+
+
+    has = {};
+    queue = [];
+  }
+
+  var callbacks = []; // 用于收集当前这次更新调用nextTick方法的所有回调函数，其中第一个回调时上面的flushSchedulerQueue代表的是渲染watcher 他总是在第一个，所后续调用的$nextTick是在渲染后执行的
+
+  var pending = false; // 代表正在更新
+  // 异步更新方法
+
+  function nextTick(fn) {
+    callbacks.push(fn);
+
+    if (!pending) {
+      // 异步执行  用 setTimeout模拟一下 实际上涉及到不同浏览器以及不同情况的事件环兼容 包括Promise，setImmediate, MutationObserver等的情况用法
+      setTimeout(function () {
+        flushCallbacksQueue();
+      }, 0);
+      pending = true;
+    }
+  }
+
+  function flushCallbacksQueue() {
+    callbacks.forEach(function (fn) {
+      return fn();
+    });
+    pending = false; // 更新完毕 置为false
+  }
+
+  var id$1 = 0;
+
+  var Watcher = /*#__PURE__*/function () {
+    function Watcher(vm, exprOrFn, cb, options) {
+      _classCallCheck(this, Watcher);
+
+      this.vm = vm;
+      this.exprOrFn = exprOrFn;
+      this.cb = cb;
+      this.options = options;
+      this.deps = []; // 用于记住（存）dep
+
+      this.depIds = new Set(); // 用于去重dep
+
+      if (typeof exprOrFn === "function") {
+        this.getter = exprOrFn;
+      }
+
+      this.id = id$1++; // 用于标记watcher 后面去重用
+      // 需要直接调用渲染和更新的方法 并进行对应的依赖收集 所以直接调用get
+
+      this.get();
+    }
+
+    _createClass(Watcher, [{
+      key: "get",
+      value: function get() {
+        // 标记 这个时候Dep.target就不是null了
+        pushTarget(this); // 渲染和更新方法会访问data中的属性，访问的时候就会调用当前属性get方法 通过get方法中判断Dep.target 进行依赖收集 而此时Dep.target不是null
+
+        this.getter(); // 清空Dep.target
+
+        popTarget();
+      } // 收集dep
+
+    }, {
+      key: "addDep",
+      value: function addDep(dep) {
+        // 判断有没有存过当前的这个dep
+        if (!this.depIds.has(dep.id)) {
+          // 存dep
+          this.deps.push(dep); // 存dep的id
+
+          this.depIds.add(dep.id); // 将当前的这个watcher存到dep中
+
+          dep.addSub(this);
+        }
+      } // 更新wather列队
+
+    }, {
+      key: "update",
+      value: function update() {
+        queueWatcher(this); // 将watcher存储起来
+        // this.get();
+      } // 更新方法
+
+    }, {
+      key: "run",
+      value: function run() {
+        this.get();
+      }
+    }]);
+
+    return Watcher;
+  }();
+
+  function patch(oldVnode, newVnode) {
+    var isRealElem = oldVnode.nodeType; // 判断是否为真实元素 如果是真实元素则可以用新的虚拟节点（newVnode）创建dom元素 然后添加到当前的元素下面 并删除掉当前元素 实现元素的替换 页面的更新
+
+    if (isRealElem) {
+      var oldElem = oldVnode; // 获取父元素
+
+      var parenElem = oldElem.parentNode; // 创建新元素并添加属性
+
+      var el = createElem(newVnode);
+      console.log(el); // 将新元素添加到父元素上 插入到老元素的后面
+
+      parenElem.insertBefore(el, oldElem.nextSibling); // 删除老元素
+
+      parenElem.removeChild(oldElem);
+      return el;
+    }
+  }
+
+  function createElem(vnode) {
+    console.log(vnode);
+    var tag = vnode.tag,
+        children = vnode.children,
+        text = vnode.text,
+        data = vnode.data,
+        key = vnode.key; // 如果tag是string的话 那么当前的这个节点则是元素节点 否则为文本节点
+
+    if (typeof tag == "string") {
+      // 创建元素 将虚拟节点和真实节点做一个映射关系 （后面diff时如果元素相同则可以直接复用老元素）
+      vnode.el = document.createElement(tag);
+      updateProperties(vnode); // 递归调用当前函数 添加子节点
+
+      if (children.length > 0) {
+        children.forEach(function (child) {
+          vnode.el.append(createElem(child));
+        });
+      }
+    } else {
+      vnode.el = document.createTextNode(text);
+    }
+
+    return vnode.el;
+  } // 设置属性
+
+
+  function updateProperties(vnode) {
+    var newProps = vnode.data || {};
+    var el = vnode.el;
+
+    for (var key in newProps) {
+      // 如果当前属性是style 就循环style对象把style的每一个属性都添加上
+      if (key === "style") {
+        for (var styleName in newProps.style) {
+          el.style[styleName] = newProps.style[styleName];
+        }
+      } // event slot ……
+      else {
+          // 元素属性
+          el.setAttribute(key, newProps[key]);
+        }
+    }
+  }
 
   function lifeCycleMixin(Vue) {
-    Vue.prototype._update = function () {
-      console.log("_update");
+    Vue.prototype._update = function (vnode) {
+      var vm = this;
+      vm.$el = patch(vm.$el, vnode);
     };
   }
   function mountComponent(vm, el) {
     // Vue在渲染过程中会创建一个“渲染watcher”，只用来渲染
     // watcher就相当于是一个回调，每次数据变化，就会重新执行watcher
+    callHook(vm, "beforeMount");
+
     var updateComponent = function updateComponent() {
       // _render内部会调用 解析后的render方法  => 返回的是vnode（虚拟节点）
       // _update将虚拟节点转换为dom节点
@@ -558,13 +906,28 @@
 
 
     new Watcher(vm, updateComponent, function () {}, true);
+    callHook(vm, "mounted");
+  } // 调用生命周期函数 应用发布订阅模式，
+
+  function callHook(vm, hook) {
+    var handlers = vm.$options[hook]; // 这里是一个同一生命周期函数的数组 [fn,fn,fn]
+
+    if (handlers) {
+      for (var i = 0; i < handlers.length; i++) {
+        // 将每一个生命周期函数调用 并将生命周期函数的this 指向当前实例
+        handlers[i].call(vm);
+      }
+    }
   }
 
   function initMixin(Vue) {
     Vue.prototype._init = function (options) {
-      var vm = this;
-      vm.$options = options;
-      initState(vm); // 通过模板渲染
+      var vm = this; // 将Vue.mixin所记录的Vue.options与new Vue传入的options合并 为保证每次调用合并的都是当前的实例的构造函数上的options 所以用 vm.constrcutor.options
+
+      vm.$options = mergeOptions(vm.constructor.options, options);
+      callHook(vm, "beforeCreate");
+      initState(vm);
+      callHook(vm, "created"); // 通过模板渲染
 
       if (vm.$options.el) {
         vm.$mount(vm.$options.el);
@@ -575,13 +938,13 @@
     Vue.prototype.$mount = function (el) {
       var vm = this;
       var options = vm.$options;
-      el = document.querySelector(el); // 如果用户没有传render方法，那么就需要将template转换成render方法
+      vm.$el = document.querySelector(el); // 如果用户没有传render方法，那么就需要将template转换成render方法
 
       if (!options.render) {
         var template = vm.$options.template; // 如果用户也没有传template，那么就将el作为模板转换成render函数
 
-        if (!template && el) {
-          template = el.outerHTML;
+        if (!template && vm.$el) {
+          template = vm.$el.outerHTML;
         }
 
         var render = compileToFunctions(template);
@@ -590,7 +953,7 @@
       } // 组件的挂在流程
 
 
-      mountComponent(vm);
+      mountComponent(vm, vm.$el);
     };
   }
 
@@ -647,14 +1010,29 @@
     };
   }
 
+  function initGlobalAPI(Vue) {
+    Vue.options = {}; // 所有的全局api 用户传递的参数 都会绑定到这个对象中 （用于收集用户调用全局api传递的参数）
+    // 提取公共的方法 逻辑，通过mixin混合到每一个实例中
+
+    Vue.mixin = function (mixin) {
+      this.options = mergeOptions(this.options, mixin);
+      console.log(this.options);
+    };
+  }
+
   function Vue(options) {
     this._init(options);
   }
 
   initMixin(Vue); // 添加原型方法
 
-  renderMixin(Vue);
-  lifeCycleMixin(Vue);
+  renderMixin(Vue); // 原型上添加_render方法 用于渲染dom
+
+  lifeCycleMixin(Vue); // 生命周期相关
+
+  initGlobalAPI(Vue); // 给构造函数扩展全局方法
+
+  Vue.prototype.$nextTick = nextTick; // 将nextTick 挂载到原型对象上
 
   return Vue;
 
