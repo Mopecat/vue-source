@@ -1,5 +1,6 @@
 import { isObject } from "../utils";
 import { arrayMethods } from "./array";
+import Dep from "./dep";
 
 class Observer {
   constructor(data) {
@@ -32,14 +33,21 @@ class Observer {
 // 递归循环data 重写data的每一个属性
 function defineReactive(data, key, value) {
   observe(value);
+  let dep = new Dep();
   Object.defineProperty(data, key, {
     get() {
+      // 判断如果当前属性是否需要依赖收集（也就是当前模板中是否有用到这个属性）
+      if (Dep.target) {
+        dep.depend(); // dep去收集当前属性的依赖
+        console.log(dep);
+      }
       return value;
     },
     set(newVal) {
       if (newVal == value) return;
       observe(newVal); // 监控当前设置的值 因为设置的值也可能是个对象
       value = newVal;
+      dep.notify();
     },
   });
 }
