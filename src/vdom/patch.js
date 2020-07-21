@@ -14,11 +14,31 @@ export function patch(oldVnode, newVnode) {
     parenElem.removeChild(oldElem);
     return el;
   } else {
-    // dom diff
+    // dom diff 是进行同层的比较 正常要diff两棵树 自由度是 O(n^3) 但是如果同层比较就是 O(n) 这样就会优化了很多，因为本身前端操作dom很少会有跨层级操作dom的情况
+    console.log("diff");
+    // 两颗树要先比较根节点 在比较子级
+    // 判断新旧vnode的根节点 元素标签是否相同 如果不同证明整颗树的根节点不同 需要替换
+    if (oldVnode.tag !== newVnode.tag) {
+      oldVnode.el.parentNode.replaceChild(createElem(newVnode), oldVnode.el);
+    }
+    // 都是文本的情况 如果是老节点是文本 新节点是元素 则会走上面那个 tag不相等的判断
+    if (!oldVnode.tag) {
+      if (oldVnode.text !== newVnode.text) {
+        oldVnode.el.textContent = newVnode.text;
+      }
+    }
+    // 走到这里就一定是标签 而且标签一致了
+    // 直接复用老节点的el
+    let el = (newVnode.el = oldVnode.el);
+
+    // 更新属性
+    updateProperties(newVnode, oldVnode.data);
+
+    return el;
   }
 }
 
-function createElem(vnode) {
+export function createElem(vnode) {
   console.log(vnode);
   const { tag, children, text, data, key } = vnode;
   // 如果tag是string的话 那么当前的这个节点则是元素节点 否则为文本节点
@@ -39,9 +59,26 @@ function createElem(vnode) {
 }
 
 // 设置属性
-function updateProperties(vnode) {
+function updateProperties(vnode, oldProps = {}) {
   const newProps = vnode.data || {};
   let el = vnode.el;
+  // 获取新旧节点的style属性对象
+  let newStyle = newProps.style || {};
+  let oldStyle = oldProps.style || {};
+
+  // 比较新旧style属性对象，如果老的属性 新的没有 则将新对象中的属性删掉 如果是新增属性的话 后面的循环添加了
+  for (let key in oldStyle) {
+    if (!newStyle[key]) {
+      newStyle[key] = "";
+    }
+  }
+
+  // 如果新的节点中删除了某些属性 则在新的节点上把对应的属性删掉
+  for (let key in oldProps) {
+    if (!newProps[key]) {
+      el.removeAttribute(key);
+    }
+  }
   for (let key in newProps) {
     // 如果当前属性是style 就循环style对象把style的每一个属性都添加上
     if (key === "style") {

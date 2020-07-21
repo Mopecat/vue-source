@@ -840,9 +840,31 @@
 
       parenElem.removeChild(oldElem);
       return el;
+    } else {
+      // dom diff 是进行同层的比较 正常要diff两棵树 自由度是 O(n^3) 但是如果同层比较就是 O(n) 这样就会优化了很多，因为本身前端操作dom很少会有跨层级操作dom的情况
+      console.log("diff"); // 两颗树要先比较根节点 在比较子级
+      // 判断新旧vnode的根节点 元素标签是否相同 如果不同证明整颗树的根节点不同 需要替换
+
+      if (oldVnode.tag !== newVnode.tag) {
+        oldVnode.el.parentNode.replaceChild(createElem(newVnode), oldVnode.el);
+      } // 都是文本的情况 如果是老节点是文本 新节点是元素 则会走上面那个 tag不相等的判断
+
+
+      if (!oldVnode.tag) {
+        if (oldVnode.text !== newVnode.text) {
+          oldVnode.el.textContent = newVnode.text;
+        }
+      } // 走到这里就一定是标签 而且标签一致了
+      // 直接复用老节点的el
+
+
+      var _el = newVnode.el = oldVnode.el; // 更新属性
+
+
+      updateProperties(newVnode, oldVnode.data);
+      return _el;
     }
   }
-
   function createElem(vnode) {
     console.log(vnode);
     var tag = vnode.tag,
@@ -868,21 +890,37 @@
     return vnode.el;
   } // 设置属性
 
-
   function updateProperties(vnode) {
+    var oldProps = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
     var newProps = vnode.data || {};
-    var el = vnode.el;
+    var el = vnode.el; // 获取新旧节点的style属性对象
 
-    for (var key in newProps) {
+    var newStyle = newProps.style || {};
+    var oldStyle = oldProps.style || {}; // 比较新旧style属性对象，如果老的属性 新的没有 则将新对象中的属性删掉 如果是新增属性的话 后面的循环添加了
+
+    for (var key in oldStyle) {
+      if (!newStyle[key]) {
+        newStyle[key] = "";
+      }
+    } // 如果新的节点中删除了某些属性 则在新的节点上把对应的属性删掉
+
+
+    for (var _key in oldProps) {
+      if (!newProps[_key]) {
+        el.removeAttribute(_key);
+      }
+    }
+
+    for (var _key2 in newProps) {
       // 如果当前属性是style 就循环style对象把style的每一个属性都添加上
-      if (key === "style") {
+      if (_key2 === "style") {
         for (var styleName in newProps.style) {
           el.style[styleName] = newProps.style[styleName];
         }
       } // event slot ……
       else {
           // 元素属性
-          el.setAttribute(key, newProps[key]);
+          el.setAttribute(_key2, newProps[_key2]);
         }
     }
   }
@@ -985,24 +1023,24 @@
   }
 
   function renderMixin(Vue) {
+    Vue.prototype._v = function (text) {
+      return createTextVnode(text);
+    }; // 创建元素虚拟节点
+
+
+    Vue.prototype._c = function () {
+      return createElement.apply(void 0, arguments);
+    }; // 值
+
+
+    Vue.prototype._s = function (val) {
+      return val == null ? "" : _typeof(val) === "object" ? JSON.stringify(val) : val;
+    };
+
     Vue.prototype._render = function () {
       console.log("_render");
       var vm = this;
       var render = vm.$options.render; // 创建文本的虚拟节点
-
-      Vue.prototype._v = function (text) {
-        return createTextVnode(text);
-      }; // 创建元素虚拟节点
-
-
-      Vue.prototype._c = function () {
-        return createElement.apply(void 0, arguments);
-      }; // 值
-
-
-      Vue.prototype._s = function (val) {
-        return val == null ? "" : _typeof(val) === "object" ? JSON.stringify(val) : val;
-      };
 
       var vnode = render.call(this);
       console.log(vnode);
@@ -1033,6 +1071,26 @@
   initGlobalAPI(Vue); // 给构造函数扩展全局方法
 
   Vue.prototype.$nextTick = nextTick; // 将nextTick 挂载到原型对象上
+
+  var vm1 = new Vue({
+    data: {
+      name: "mopecat"
+    }
+  });
+  var vm2 = new Vue({
+    data: {
+      name: "feely"
+    }
+  });
+  var render1 = compileToFunctions("<div id=\"a\" c=\"a\" style=\"background: red;color: white\">{{name}}</div>");
+  var oldVnode = render1.call(vm1);
+  var realElement = createElem(oldVnode);
+  document.body.appendChild(realElement);
+  var render2 = compileToFunctions("<div id=\"a\" style=\"background: yellow;color: red;border: 1px solid #dddddd;\">{{name}}</div>");
+  var newVnode = render2.call(vm2);
+  setTimeout(function () {
+    patch(oldVnode, newVnode);
+  }, 1000);
 
   return Vue;
 

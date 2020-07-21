@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app" style="color: red;">
+      hello world {{msg}} shshs {{age}} {{msg}}
+    </div>
+    <script src="../dist/vue.js"></script>
+    <script>
+      // Vue.mixin({
+      //   a: { a: 1 },
+      //   b: 2,
+      //   beforeCreate() {
+      //     console.log("beforeCreate 1");
+      //   },
+      //   created() {
+      //     console.log("created 1");
+      //   },
+      // });
+      // Vue.mixin({
+      //   a: { b: 2 },
+      //   c: 3,
+      //   beforeCreate() {
+      //     console.log("beforeCreate 2");
+      //   },
+      //   created() {
+      //     console.log("created 2");
+      //   },
+      // });
+      let vm = new Vue({
+        el: "#app",
+        data() {
+          return {
+            msg: "hello world",
+            age: 1,
+            a: { aa: 123 },
+            arr: [{ b: 1 }],
+          };
+        },
+        beforeCreate() {
+          console.log("beforeCreate vm");
+        },
+        created() {
+          console.log("created vm");
+        },
+        beforeMount() {
+          console.log("beforeMount");
+        },
+        mounted() {
+          console.log("mounted");
+        },
+        // template: `<div id="app" style="color: red"><span>hello world {{msg}} shshs {{age}}</span></div>`,
+      });
+      setTimeout(() => {
+        vm.msg = 1;
+        vm.msg = 2;
+        vm.msg = 3;
+        vm.age = 18;
+
+        vm.$nextTick(() => {
+          console.log(app.innerHTML);
+        });
+      }, 1000);
+      // vm._data.msg = "123123";
+      // vm._data.arr.push({ c: 22 });
+    </script>
+  </body>
+</html>
