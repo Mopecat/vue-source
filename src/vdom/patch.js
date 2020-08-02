@@ -34,6 +34,28 @@ export function patch(oldVnode, newVnode) {
     // 更新属性
     updateProperties(newVnode, oldVnode.data);
 
+    /**
+     * 比对子节点策略
+     * 情况分析
+     * 新老节点都有子节点 那就比较  这里是diff的核心
+     * 老的有子节点 新的没有子节点 直接删除
+     * 老的没有子节点 新的有子节点 直接添加
+     */
+
+    let oldChildren = oldVnode.children || [];
+    let newChildren = newVnode.children || [];
+
+    if (oldChildren.length.length > 0 && newChildren.length > 0) {
+      // diff
+    } else if (oldChildren.length > 0) {
+      el.innerHTML = "";
+    } else if (newChildren.length > 0) {
+      for (let i = 0; i < newChildren.length; i++) {
+        let child = newChildren[i];
+        el.appendChild(createElem(child)); // 这里可以用先拼成fragment片段然后再一起挂载，但是现代浏览器有自动做这一层优化
+      }
+    }
+
     return el;
   }
 }
