@@ -82,18 +82,33 @@ function updateChildren(parent, oldChildren, newChildren) {
   // 比较时采用的是新老节点中最短的 新旧中哪个先循环完 都结束循环，剩下没循环到的要么是新增 要么就是删除的
   while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
     // 两个虚拟节点是否一致是通过 key + 元素的 tag类型判断的 看方法isSameVnode
+    // 方案1 从头部开始比较 相当于优化的是子元素列表尾部插入元素
     if (isSameVnode(oldStartVnode, newStartVnode)) {
       // 标签和key一致 但是元素的属性可能不一致
       patch(oldStartVnode, newStartVnode); // 递归调用patch方法
-      // 继续比较下一个元素 修改指针 以及索引元素
+      // 继续比较下一个元素 后移指针 以及索引元素
       oldStartVnode = oldChildren[++oldStartIndex];
       newStartVnode = newChildren[++newStartIndex];
+    }
+    // 方案2 如果开始的两个元素不一致 那么就从尾部开始比较 相当于优化的是子元素列表的前面插入元素
+    else if (isSameVnode(oldEndVnode, newEndVnode)) {
+      patch(oldEndVnode, newEndVnode);
+      // 继续比较下一个元素 前移指针 以及 索引的元素
+      oldEndVnode = oldChildren[--oldEndIndex];
+      newEndVnode = newChildren[--newEndIndex];
     }
   }
   // 如果循环结束后新的开始节点小于新的结束节点 那说明有新增的元素
   if (newStartIndex <= newEndIndex) {
     for (let i = newStartIndex; i <= newEndIndex; i++) {
-      parent.appendChild(createElem(newChildren[i]));
+      // parent.appendChild(createElem(newChildren[i]));
+      // 如果结尾元素+1是null
+      let ele =
+        newChildren[newEndIndex + 1] == null
+          ? null
+          : newChildren[newEndIndex + 1].el;
+      // insertBefore的第二个参数不传或者传null就相当于是appendChild
+      parent.insertBefore(createElem(newChildren[i]), ele);
     }
   }
 }

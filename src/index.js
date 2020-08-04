@@ -37,8 +37,9 @@ let render2 = compileToFunctions(
     <li key="A">A</li>
     <li key="B">B</li>
     <li key="C">C</li>
-    <li key="D">D</li>
-    <li key="E">E</li>
+    <li key="D">D</li>    
+    <li key="H">H</li>    
+    <li key="I">I</li>    
   </div>`
 );
 let newVnode = render2.call(vm2);
