@@ -862,9 +862,81 @@
 
 
       updateProperties(newVnode, oldVnode.data);
+      /**
+       * 比对子节点策略
+       * 情况分析
+       * 新老节点都有子节点 那就比较  这里是diff的核心
+       * 老的有子节点 新的没有子节点 直接删除
+       * 老的没有子节点 新的有子节点 直接添加
+       */
+
+      var oldChildren = oldVnode.children || [];
+      var newChildren = newVnode.children || [];
+
+      if (oldChildren.length > 0 && newChildren.length > 0) {
+        // diff
+        updateChildren(_el, oldChildren, newChildren);
+      } else if (oldChildren.length > 0) {
+        _el.innerHTML = "";
+      } else if (newChildren.length > 0) {
+        for (var i = 0; i < newChildren.length; i++) {
+          var child = newChildren[i];
+
+          _el.appendChild(createElem(child)); // 这里可以用先拼成fragment片段然后再一起挂载，但是现代浏览器有自动做这一层优化
+
+        }
+      }
+
       return _el;
     }
+  } // 用于判断两个虚拟节点是否一致
+
+  function isSameVnode(oldVnode, newVnode) {
+    return oldVnode.key === newVnode.key && oldVnode.tag === newVnode.tag;
+  } // 更新子节点
+
+
+  function updateChildren(parent, oldChildren, newChildren) {
+    // vue 2.0是使用双指针的方式来进行比对的
+    // v-for需要key来标识元素是否发生变化 前后key相同则复用这个元素
+    var oldStartIndex = 0; // 老的开始索引
+
+    var oldStartVnode = oldChildren[0]; // 老的开始节点
+
+    var oldEndIndex = oldChildren.length - 1; // 老的结束索引
+
+    var oldEndVnode = oldChildren[oldEndIndex]; // 老的结束节点
+    // 新元素
+
+    var newStartIndex = 0; // 新的开始索引
+
+    var newStartVnode = newChildren[0]; // 新的开始节点
+
+    var newEndIndex = newChildren.length - 1; // 新的结束索引
+
+    var newEndVnode = newChildren[newEndIndex]; // 新的结束节点
+    // 比较时采用的是新老节点中最短的 新旧中哪个先循环完 都结束循环，剩下没循环到的要么是新增 要么就是删除的
+
+    while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
+      // 两个虚拟节点是否一致是通过 key + 元素的 tag类型判断的 看方法isSameVnode
+      if (isSameVnode(oldStartVnode, newStartVnode)) {
+        // 标签和key一致 但是元素的属性可能不一致
+        patch(oldStartVnode, newStartVnode); // 递归调用patch方法
+        // 继续比较下一个元素 修改指针 以及索引元素
+
+        oldStartVnode = oldChildren[++oldStartIndex];
+        newStartVnode = newChildren[++newStartIndex];
+      }
+    } // 如果循环结束后新的开始节点小于新的结束节点 那说明有新增的元素
+
+
+    if (newStartIndex <= newEndIndex) {
+      for (var i = newStartIndex; i <= newEndIndex; i++) {
+        parent.appendChild(createElem(newChildren[i]));
+      }
+    }
   }
+
   function createElem(vnode) {
     console.log(vnode);
     var tag = vnode.tag,
@@ -1082,11 +1154,11 @@
       name: "feely"
     }
   });
-  var render1 = compileToFunctions("<div id=\"a\" c=\"a\" style=\"background: red;color: white\">{{name}}</div>");
+  var render1 = compileToFunctions("<div id=\"a\" c=\"a\" style=\"background: red;color: white\">\n    <li key=\"A\">A</li>\n    <li key=\"B\">B</li>\n    <li key=\"C\">C</li>\n    <li key=\"D\">D</li>\n  </div>");
   var oldVnode = render1.call(vm1);
   var realElement = createElem(oldVnode);
   document.body.appendChild(realElement);
-  var render2 = compileToFunctions("<div id=\"a\" style=\"background: yellow;color: red;border: 1px solid #dddddd;\">{{name}}</div>");
+  var render2 = compileToFunctions("<div id=\"a\" style=\"background: yellow;color: red;border: 1px solid #dddddd;\">\n    <li key=\"A\">A</li>\n    <li key=\"B\">B</li>\n    <li key=\"C\">C</li>\n    <li key=\"D\">D</li>\n    <li key=\"E\">E</li>\n  </div>");
   var newVnode = render2.call(vm2);
   setTimeout(function () {
     patch(oldVnode, newVnode);

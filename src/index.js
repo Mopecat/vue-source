@@ -21,14 +21,25 @@ let vm1 = new Vue({ data: { name: "mopecat" } });
 let vm2 = new Vue({ data: { name: "feely" } });
 
 let render1 = compileToFunctions(
-  `<div id="a" c="a" style="background: red;color: white">{{name}}</div>`
+  `<div id="a" c="a" style="background: red;color: white">
+    <li key="A">A</li>
+    <li key="B">B</li>
+    <li key="C">C</li>
+    <li key="D">D</li>
+  </div>`
 );
 let oldVnode = render1.call(vm1);
 let realElement = createElem(oldVnode);
 document.body.appendChild(realElement);
 
 let render2 = compileToFunctions(
-  `<div id="a" style="background: yellow;color: red;border: 1px solid #dddddd;">{{name}}</div>`
+  `<div id="a" style="background: yellow;color: red;border: 1px solid #dddddd;">
+    <li key="A">A</li>
+    <li key="B">B</li>
+    <li key="C">C</li>
+    <li key="D">D</li>
+    <li key="E">E</li>
+  </div>`
 );
 let newVnode = render2.call(vm2);
 setTimeout(() => {
