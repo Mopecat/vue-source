@@ -1,2 +1,7 @@
 # vue-source
-vue源代码学习及复现
+
+vue 源代码学习及复现
+
+# diff 算法逻辑示意图
+
+![diff 算法逻辑示意图](./diff.jpg)
