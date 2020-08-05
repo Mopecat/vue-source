@@ -889,7 +889,16 @@
 
       return _el;
     }
+  } // 将传入的children列表创建一个映射表 关联当前节点的额key和当前元素的index
+
+  function makeIndexByKey(children) {
+    var map = {};
+    children.forEach(function (item, index) {
+      map[item.key] = index;
+    });
+    return map;
   } // 用于判断两个虚拟节点是否一致
+
 
   function isSameVnode(oldVnode, newVnode) {
     return oldVnode.key === newVnode.key && oldVnode.tag === newVnode.tag;
@@ -897,8 +906,9 @@
 
 
   function updateChildren(parent, oldChildren, newChildren) {
-    // vue 2.0是使用双指针的方式来进行比对的
+    var map = makeIndexByKey(oldChildren); // vue 2.0是使用双指针的方式来进行比对的
     // v-for需要key来标识元素是否发生变化 前后key相同则复用这个元素
+
     var oldStartIndex = 0; // 老的开始索引
 
     var oldStartVnode = oldChildren[0]; // 老的开始节点
@@ -918,38 +928,67 @@
     // 比较时采用的是新老节点中最短的 新旧中哪个先循环完 都结束循环，剩下没循环到的要么是新增 要么就是删除的
 
     while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
-      // 两个虚拟节点是否一致是通过 key + 元素的 tag类型判断的 看方法isSameVnode
-      // 方案1 从头部开始比较 相当于优化的是子元素列表尾部插入元素
-      if (isSameVnode(oldStartVnode, newStartVnode)) {
-        // 标签和key一致 但是元素的属性可能不一致
-        patch(oldStartVnode, newStartVnode); // 递归调用patch方法
-        // 继续比较下一个元素 后移指针 以及索引元素
-
+      // 当前循环的元素可能是null 如果是null就跳过
+      // 指针从前向后移动时跳过null
+      if (!oldStartVnode) {
         oldStartVnode = oldChildren[++oldStartIndex];
-        newStartVnode = newChildren[++newStartIndex];
-      } // 方案2 如果开始的两个元素不一致 那么就从尾部开始比较 相当于优化的是子元素列表的前面插入元素
-      else if (isSameVnode(oldEndVnode, newEndVnode)) {
-          patch(oldEndVnode, newEndVnode); // 继续比较下一个元素 前移指针 以及 索引的元素
-
+      } // 指针从后向前移动时跳过null
+      else if (!oldEndVnode) {
           oldEndVnode = oldChildren[--oldEndIndex];
-          newEndVnode = newChildren[--newEndIndex];
-        } // 方案3 头不一样 尾不一样 但是老的头和新的尾相同 将头部移动到尾部 倒序操作 相当于只修改了一个元素的位置 复用了其他的元素
-        else if (isSameVnode(oldStartVnode, newEndVnode)) {
-            patch(oldStartVnode, newEndVnode); // 将头部元素移动到尾部
-
-            parent.insertBefore(oldStartVnode.el, oldEndVnode.el.nextSibling); // 继续向下一个元素移动
+        } // 两个虚拟节点是否一致是通过 key + 元素的 tag类型判断的 看方法isSameVnode
+        // 方案1 从头部开始比较 相当于优化的是子元素列表尾部插入元素
+        else if (isSameVnode(oldStartVnode, newStartVnode)) {
+            // 标签和key一致 但是元素的属性可能不一致
+            patch(oldStartVnode, newStartVnode); // 递归调用patch方法
+            // 继续比较下一个元素 后移指针 以及索引元素
 
             oldStartVnode = oldChildren[++oldStartIndex];
-            newEndVnode = newChildren[--newEndIndex];
-          } // 方案4 头不一样 尾不一样 但是老的结尾和新的头相同 将尾部移动到头部 相当于只修改了一个元素的位置 复用了其他的元素 是方案3的相反操作
-          else if (isSameVnode(oldEndVnode, newStartVnode)) {
-              patch(oldEndVnode, newStartVnode); // 将头部元素移动到尾部
+            newStartVnode = newChildren[++newStartIndex];
+          } // 方案2 如果开始的两个元素不一致 那么就从尾部开始比较 相当于优化的是子元素列表的前面插入元素
+          else if (isSameVnode(oldEndVnode, newEndVnode)) {
+              patch(oldEndVnode, newEndVnode); // 继续比较下一个元素 前移指针 以及 索引的元素
 
-              parent.insertBefore(oldEndVnode.el, oldStartVnode.el); // 继续向下一个元素移动
+              oldEndVnode = oldChildren[--oldEndIndex];
+              newEndVnode = newChildren[--newEndIndex];
+            } // 方案3 头不一样 尾不一样 但是老的头和新的尾相同 将头部移动到尾部 倒序操作 相当于只修改了一个元素的位置 复用了其他的元素
+            else if (isSameVnode(oldStartVnode, newEndVnode)) {
+                patch(oldStartVnode, newEndVnode); // 将头部元素移动到尾部
 
-              oldEndVnode = oldChildren[--oldStartIndex];
-              newStartVnode = newChildren[++newEndIndex];
-            }
+                parent.insertBefore(oldStartVnode.el, oldEndVnode.el.nextSibling); // 继续向下一个元素移动
+
+                oldStartVnode = oldChildren[++oldStartIndex];
+                newEndVnode = newChildren[--newEndIndex];
+              } // 方案4 头不一样 尾不一样 但是老的结尾和新的头相同 将尾部移动到头部 相当于只修改了一个元素的位置 复用了其他的元素 是方案3的相反操作
+              else if (isSameVnode(oldEndVnode, newStartVnode)) {
+                  patch(oldEndVnode, newStartVnode); // 将头部元素移动到尾部
+
+                  parent.insertBefore(oldEndVnode.el, oldStartVnode.el); // 继续向下一个元素移动
+
+                  oldEndVnode = oldChildren[--oldEndIndex];
+                  newStartVnode = newChildren[++newStartIndex];
+                } // 乱序比对
+                else {
+                    // 用新元素开始的key在map映射关系中找老元素中是否存在当前这个key 如果存在则moveIndex就是oldChildren中newStartVnode的位置
+                    var moveIndex = map[newStartVnode.key]; // 说明当前的这个newStartVnode是新增的元素 在oldChildren中不存在
+
+                    if (moveIndex == undefined) {
+                      // 因为不存在所以直接加在oldStartVnode前面
+                      parent.insertBefore(createElem(newStartVnode), oldStartVnode.el);
+                    } // moveIndex不为空 oldChildren中的这个元素移动到开头（也就是oldChildren中第一个的前面）
+                    else {
+                        // 获取将要移动的元素
+                        var moveVnode = oldChildren[moveIndex]; // 将它原有的位置置为null
+
+                        oldChildren[moveIndex] = null; // 比较这两个节点
+
+                        patch(moveVnode, newStartVnode); // 将这个元素插入到第一个元素之前
+
+                        parent.insertBefore(moveVnode.el, oldStartVnode.el);
+                      } // 将新元素的指针向后移动
+
+
+                    newStartVnode = newChildren[++newStartIndex];
+                  }
     } // 如果循环结束后新的开始节点小于新的结束节点 那说明有新增的元素
 
 
@@ -960,6 +999,17 @@
         var ele = newChildren[newEndIndex + 1] == null ? null : newChildren[newEndIndex + 1].el; // insertBefore的第二个参数不传或者传null就相当于是appendChild
 
         parent.insertBefore(createElem(newChildren[i]), ele);
+      }
+    } // 如果循环结束后 老的开始节点小于等于老的结束节点 则说明还有oldChildren中还有剩余的节点 （这些节点是newChildren中没有的） 就将他们都删掉
+
+
+    if (oldStartIndex <= oldEndIndex) {
+      for (var _i = oldStartIndex; _i <= oldEndIndex; _i++) {
+        var child = oldChildren[_i];
+
+        if (child != null) {
+          parent.removeChild(child.el);
+        }
       }
     }
   }
@@ -1185,7 +1235,7 @@
   var oldVnode = render1.call(vm1);
   var realElement = createElem(oldVnode);
   document.body.appendChild(realElement);
-  var render2 = compileToFunctions("<div id=\"a\" style=\"background: yellow;color: red;border: 1px solid #dddddd;\"> \n    <li key=\"C\">C</li> \n    <li key=\"D\">D</li> \n    <li key=\"A\">A</li>\n    <li key=\"B\">B</li>\n  </div>");
+  var render2 = compileToFunctions("<div id=\"a\" style=\"background: yellow;color: red;border: 1px solid #dddddd;\"> \n    <li key=\"C\">C</li>\n    <li key=\"D\">D</li> \n    <li key=\"M\">M</li> \n    <li key=\"E\">E</li>\n  </div>");
   var newVnode = render2.call(vm2);
   setTimeout(function () {
     patch(oldVnode, newVnode);
