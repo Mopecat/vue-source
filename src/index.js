@@ -33,13 +33,11 @@ let realElement = createElem(oldVnode);
 document.body.appendChild(realElement);
 
 let render2 = compileToFunctions(
-  `<div id="a" style="background: yellow;color: red;border: 1px solid #dddddd;">
-    <li key="A">A</li>
+  `<div id="a" style="background: yellow;color: red;border: 1px solid #dddddd;"> 
     <li key="B">B</li>
-    <li key="C">C</li>
-    <li key="D">D</li>    
-    <li key="H">H</li>    
-    <li key="I">I</li>    
+    <li key="C">C</li> 
+    <li key="D">D</li> 
+    <li key="A">A</li>
   </div>`
 );
 let newVnode = render2.call(vm2);

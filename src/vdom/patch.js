@@ -97,6 +97,27 @@ function updateChildren(parent, oldChildren, newChildren) {
       oldEndVnode = oldChildren[--oldEndIndex];
       newEndVnode = newChildren[--newEndIndex];
     }
+    // 方案3 头不一样 尾不一样 但是老的头和新的尾相同 将头部移动到尾部 倒序操作 相当于只修改了一个元素的位置 复用了其他的元素
+    else if (isSameVnode(oldStartVnode, newEndVnode)) {
+      patch(oldStartVnode, newEndVnode);
+      // 将头部元素移动到尾部
+      parent.insertBefore(oldStartVnode.el, oldEndVnode.el.nextSibling);
+      // 继续向下一个元素移动
+      oldStartVnode = oldChildren[++oldStartIndex];
+      newEndVnode = newChildren[--newEndIndex];
+    }
+    // 方案4 头不一样 尾不一样 但是老的结尾和新的头相同 将尾部移动到头部 相当于只修改了一个元素的位置 复用了其他的元素 是方案3的相反操作
+    else if (isSameVnode(oldEndVnode, newStartVnode)) {
+      patch(oldEndVnode, newStartVnode);
+      // 将头部元素移动到尾部
+      parent.insertBefore(oldEndVnode.el, oldStartVnode.el);
+      // 继续向下一个元素移动
+      oldEndVnode = oldChildren[--oldStartIndex];
+      newStartVnode = newChildren[++newEndIndex];
+    }
+    // 乱序比对
+    else {
+    }
   }
   // 如果循环结束后新的开始节点小于新的结束节点 那说明有新增的元素
   if (newStartIndex <= newEndIndex) {
